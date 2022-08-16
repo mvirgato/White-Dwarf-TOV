@@ -138,36 +138,55 @@ class eos_class:
 
     
     def rho(self, xws):
+
+        '''
+        Returns density in kg/m^3
+        '''
         if xws<self.xmin or xws>self.xmax:
             return 0
         else:
             return 10**self.rho_interp(np.log10(xws))*gTOkg/cmTOm**3
     
     def ne(self, xws):
+        '''
+        Returns ne in pm^-3
+        '''
         if xws<self.xmin or xws>self.xmax:
             return 0
         else:
             return 10**self.ne_interp(np.log10(xws))
 
     def np(self, xws):
+        '''
+        Returns np in pm^-3
+        '''
         if xws < self.xmin or xws > self.xmax:
             return 0
         else:
             return  3 / (4 * pi * (xws * lampi * inveVTOm * mTOpm)**3) # Z
 
     def P(self, xws):
+        '''
+        Returns P in Pa
+        '''
         if xws<self.xmin or xws>self.xmax:
             return 1e-20
         else:
             return 10**self.P_interp(np.log10(xws))
 
     def mufe(self, xws):
+        '''
+        Returns muFe in MeV
+        '''
         if xws<self.xmin or xws>=self.xmax:
             return 0
         else:
             return self.mufe_interp(np.log10(xws))
 
     def rho_P(self, P):
+        '''
+        Returns density in kg/m^3 as a function of pressure
+        '''
         if P>self.P_values.iloc[0] or P<self.P_values.iloc[-1]:
             return 1e-20
 
@@ -414,7 +433,7 @@ class mixed_WD:
 
         Outputs:
         ---------
-        [dmdr, dPdr]
+        [dmdr, dPdr, dphidr]
         '''
         r = x
         m = y[0]
@@ -644,18 +663,23 @@ class mixed_WD:
         def dr(lP0): return 10**(-(y2-y1)*(lP0 - lstart)/(lstop - lstart) + y2)
         
         MR_vals = []
+
         print("\nSolving MR for {}{} WD at T={:0.3e}K".format(self.elemInner, self.elemOutter, self.temp))
+        
         for lP in lP_vals:
+        
             R_cent, M_cent, rho_cent, P_cent, ne_cent, np_cent, mufe_cent, B_cent = self.TOV_central(10**lP, dr(lP))
             R_vals, M_vals, rho_vals, P_vals, ne_vals, np_vals, mufe_vals, B_vals, r_tran  = self.TOV_mixed(10**lP, dr(lP))
+        
             print("\tResults: M = {}, R = {}\n".format(M_vals[-1]/Msol, R_vals[-1]))
+        
             MR_vals.append([M_vals[-1], R_vals[-1]])
             # print(MR_vals)
 
             if make_profs == True:
                 mstar = M_vals[-1]/Msol
 
-                profile_data = pd.DataFrame({'r[m]': R_vals[:-1], 'm[Msun]': np.array(M_vals[:-1])/Msol, 'rho[kg/m^3]': np.array(rho_vals)[:-1]*kgTOg/(mTOcm**3), 'P[Pa]': P_vals[:-1], 'ne[pm^-3]': ne_vals[:-1], 'np[pm^-3]': np_vals[:-1], 'muF_e[MeV]': mufe_vals[:-1], 'B': B_vals[-1]})
+                profile_data = pd.DataFrame({'r[m]': R_vals[:-1], 'm[Msun]': np.array(M_vals[:-1])/Msol, 'rho[g/cm^3]': np.array(rho_vals)[:-1]*kgTOg/(mTOcm**3), 'P[Pa]': P_vals[:-1], 'ne[pm^-3]': ne_vals[:-1], 'np[pm^-3]': np_vals[:-1], 'muF_e[MeV]': mufe_vals[:-1], 'B': B_vals[-1]})
                 if not os.path.isdir('results/{}{}/{:0.3e}/profiles/{:0.3f}'.format(self.elemInner, self.elemOutter, self.temp, mstar)):
                     os.system('mkdir -p results/{}{}/{:0.3e}/profiles/{:0.3f}'.format(self.elemInner, self.elemOutter, self.temp, mstar))
                 # profile_data.to_csv('profiles/profile_{}{}_{:0.3e}_{:0.3f}.dat'.format(self.elemInner, self.elemOutter, self.temp, mstar), index=False, sep='\t')
@@ -664,7 +688,7 @@ class mixed_WD:
 
                 trans_data = np.transpose((R_cent[:-1], np.array(M_cent)[:-1]/Msol, np.array(rho_cent)[:-1]*kgTOg/(mTOcm**3), P_cent[:-1], ne_cent[:-1], np_cent[:-1], mufe_cent[:-1], B_cent[:-1]))
                 # print(trans_data)
-                np.savetxt('results/{}{}/{:0.3e}/profiles/{:0.3f}/profile_central.dat'.format(self.elemInner, self.elemOutter, self.temp, mstar), trans_data, delimiter='\t', header='r[m]\tm[Msun]\trho[kg/m^3]\tP[Pa]\tne[pm^-3]\tnp[pm^-3]\tmuF_e[MeV]\tB')
+                np.savetxt('results/{}{}/{:0.3e}/profiles/{:0.3f}/profile_central.dat'.format(self.elemInner, self.elemOutter, self.temp, mstar), trans_data, delimiter='\t', header='r[m]\tm[Msun]\trho[g/cm^3]\tP[Pa]\tne[pm^-3]\tnp[pm^-3]\tmuF_e[MeV]\tB')
 
 
 
@@ -716,10 +740,10 @@ if __name__ == "__main__":
 
         # for elem in ['C', 'O']:
     T0 = 0
-    # T1 = np.logspace(4, 8, 5)
+    T1 = np.logspace(4, 8, 5)
     T2 = np.logspace(7, 8, 10)
-    # T_tot = np.append(T1, T2[1:-1])
-    # T_tot = np.append(T0, T2)
+    T_tot = np.append(T1, T2[1:-1])
+    T_tot = np.append(T0, T_tot)
 
     # T_tot = np.logspace(4, 8, 5)
 
@@ -727,7 +751,7 @@ if __name__ == "__main__":
     lp0_2 = 30
     num = 25
     
-    for T in T2:
+    for T in T_tot:
     # #     for elem in ['C', 'O']:
     # elem = 'O'
     # T = 10000
