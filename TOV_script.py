@@ -463,8 +463,9 @@ class mixed_WD:
         data = data.drop(data[data['M'] > 1.4].index)
 
         max_loc = data['M'].idxmax()
+        min_loc = data['M'].idxmin()
 
-        M_xws0 = interp1d(data['M'][:max_loc], data['log_10_P0'][:max_loc])
+        M_xws0 = interp1d(data['M'][min_loc:max_loc], data['log_10_P0'][min_loc:max_loc])
         return M_xws0(M)
 
     def P0_M_rel(self, elem, P0):
@@ -835,10 +836,10 @@ if __name__ == "__main__":
     mass_num = int( (mass2 - mass1)/mass_inc) + 1
 
     for T in T_tot:
-    #     for elem in ['C', 'O']:
-    # # # elem = 'O'
-    # # # T = 10000
-    #         # print(T)
+    #     for elem in ['C']:
+    # # # # elem = 'O'
+    # # # # T = 10000
+    # #         # print(T)
     #         TOV_single = TOV(elem, T)
     #         TOV_single.Mass_Radius(lp0_1, lp0_2, num)
 
