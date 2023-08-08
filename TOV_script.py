@@ -1,4 +1,4 @@
-from scipy.interpolate.interpolate import interp1d
+from scipy.interpolate import interp1d
 from constants import *
 from finite_T_FMT import elem_data as elem_data
 
@@ -55,8 +55,6 @@ def B_prof_sover(rad, M_dat, P_dat, BR_c = 0.0):
         B_R = 1.0  - 2.0 * GNewt * M_dat[-1]*Msol/RS/cspeed**2
     else:
         B_R = BR_c
-
-    print(B_R)
 
     sol = integrate.solve_ivp(rev_dBdr, t_span=[x1, x2], y0=[ B_R], t_eval=np.flip(-1.0*x_prof),  vectorized=True)
 
@@ -676,8 +674,8 @@ class mixed_WD:
         
         for lP in lP_vals:
         
-            R_cent, M_cent, rho_cent, P_cent, ne_cent, np_cent, mufe_cent, B_cent = self.TOV_central(10**lP, dr(lP))
             R_vals, M_vals, rho_vals, P_vals, ne_vals, np_vals, mufe_vals, B_vals, r_tran  = self.TOV_mixed(10**lP, dr(lP))
+            R_cent, M_cent, rho_cent, P_cent, ne_cent, np_cent, mufe_cent, B_cent = self.TOV_central(10**lP, dr(lP), B_vals[0])
         
             print("\tResults: M = {}, R = {}\n".format(M_vals[-1]/Msol, R_vals[-1]))
         
@@ -720,8 +718,8 @@ class mixed_WD:
         '''
         Inputs:
         --------
-        lstart: Start solving MR relation with central xWS 10^lstart
-        lstop:  Stop solving MR relation with central xWS 10^lstop
+        lstart: Start solving MR relation with central M_star 10^lstart
+        lstop:  Stop solving MR relation with central M_star 10^lstop
         # dr: Step size of TOV solver. Default is 10
         num: Number of points of Mass Radius relation. Default 100
 
@@ -752,8 +750,8 @@ class mixed_WD:
             except:
                 continue
         
-            R_cent, M_cent, rho_cent, P_cent, ne_cent, np_cent, mufe_cent, B_cent = self.TOV_central(10**lP, dr(lP))
             R_vals, M_vals, rho_vals, P_vals, ne_vals, np_vals, mufe_vals, B_vals, r_tran  = self.TOV_mixed(10**lP, dr(lP))
+            R_cent, M_cent, rho_cent, P_cent, ne_cent, np_cent, mufe_cent, B_cent = self.TOV_central(10**lP, dr(lP), B_vals[0])
         
             print("\tResults: M = {}, R = {}\n".format(M_vals[-1]/Msol, R_vals[-1]))
         
@@ -823,34 +821,34 @@ def MR_plotter(plot_by = 'elem', elem = 'C', temp = 1e5):
 if __name__ == "__main__":
 
         # for elem in ['C', 'O']:
-    # T0 = 0
-    # T1 = np.logspace(4, 8, 21)
-    # # T2 = np.logspace(7, 8, 10)
-    # # T_tot = np.append(T1, T2[1:-1])
-    # # T_tot = np.append(T0, T1)
-    # T_tot = T1
+    T0 = 0
+    T1 = np.logspace(4, 8, 21)
+    # T2 = np.logspace(7, 8, 10)
+    # T_tot = np.append(T1, T2[1:-1])
+    # T_tot = np.append(T0, T1)
+    T_tot = T1
 
-    # # T_tot = np.logspace(4, 8, 5)
+    # T_tot = np.logspace(4, 8, 5)
 
-    # lp0_1 = 20
-    # lp0_2 = 30
-    # num = 25
+    lp0_1 = 20
+    lp0_2 = 30
+    num = 25
 
-    # mass1 = 0.2
-    # mass2 = 1.3
-    # mass_inc = 0.05
-    # mass_num = int( (mass2 - mass1)/mass_inc) + 1
+    mass1 = 0.2
+    mass2 = 1.3
+    mass_inc = 0.05
+    mass_num = int( (mass2 - mass1)/mass_inc) + 1
 
-    # for T in T_tot:
-    # #     for elem in ['C']:
-    # # # # # elem = 'O'
-    # # # # # T = 10000
-    # # #         # print(T)
-    # #         TOV_single = TOV(elem, T)
-    # #         TOV_single.Mass_Radius(lp0_1, lp0_2, num)
+    for T in T_tot:
+    #     for elem in ['C']:
+    # # # # elem = 'O'
+    # # # # T = 10000
+    # #         # print(T)
+    #         TOV_single = TOV(elem, T)
+    #         TOV_single.Mass_Radius(lp0_1, lp0_2, num)
 
-    #     TOV_mixed = mixed_WD('O', 'C', T)
-    #     TOV_mixed.Mass_Radius_Mscan(mass1, mass2, mass_num)
+        TOV_mixed = mixed_WD('O', 'C', T)
+        TOV_mixed.Mass_Radius_Mscan(mass1, mass2, mass_num)
         # TOV_mixed.Mass_Radius(lp0_1,lp0_2, num)
 
         # TOV_mixed = mixed_WD('C', 'He', T)
@@ -860,40 +858,35 @@ if __name__ == "__main__":
     # Single WD
     ########################################
 
-    RS = 1241.3811457394036e3
-    Mstar = 0.622
-    # elem = 'O'
-    # temps = np.append(np.array([0.0]), np.logspace(4, 7, 10))
+    # RS = 1241.3811457394036e3
+    # Mstar = 0.622
+    # # elem = 'O'
+    # # temps = np.append(np.array([0.0]), np.logspace(4, 7, 10))
 
-    temps = [1e6] #10**np.array([0])
-    lp0_1 = 21.5
-    lp0_2 = 30
-    num = 25
+    # temps = [1e6] #10**np.array([0])
+    # lp0_1 = 21.5
+    # lp0_2 = 30
+    # num = 25
 
     
     
-    for temp in temps:
+    # for temp in temps:
 
-        # if temp == 0.0 or np.log10(temp) in [0, 4, 5, 6, 7, 8]:
-        #     print(temp)
-        #     continue
+    #     # if temp == 0.0 or np.log10(temp) in [0, 4, 5, 6, 7, 8]:
+    #     #     print(temp)
+    #     #     continue
 
-        y1 = 1.7
-        y2 = 3.4
+    #     y1 = 1.7
+    #     y2 = 3.4
 
-        def dr(lP0): return 10**(-(y2-y1)*(lP0 - 21.5)/(30.0 - 21.5) + y2)
+    #     def dr(lP0): return 10**(-(y2-y1)*(lP0 - 21.5)/(30.0 - 21.5) + y2)
 
-        system = mixed_WD('O', 'C', temp)
-        lP0 = system.M_P0_rel(Mstar)
-        dr_set = dr(lP0)
+    #     system = mixed_WD('O', 'C', temp)
+    #     lP0 = system.M_P0_rel(Mstar)
+    #     dr_set = dr(lP0)
 
-        r_vals, m_vals, rho_vals, P_vals, ne_vals, np_vals, mufe_vals, B_vals, r_trans = system.TOV_mixed(10**lP0, dr_set)
+    #     r_vals, m_vals, rho_vals, P_vals, ne_vals, np_vals, mufe_vals, B_vals, r_trans = system.TOV_mixed(10**lP0, dr_set)
 
-        print(B_vals[0], B_vals[-1])
-
-        plt.loglog(r_vals, np.sqrt(1.0 - B_vals))
-        plt.ylim(1e-2, 1)
-        plt.show()
         # trans_data = np.transpose([r_vals[:-1], np.array(m_vals)[:-1]/Msol, np.array(rho_vals)[:-1]*kgTOg/(mTOcm**3), P_vals[:-1], ne_vals[:-1], np_vals[:-1], mufe_vals[:-1], B_vals[:-1]])
         # np.savetxt(f'special_WDs/{Mstar}_Msun/FMT_OC_{temp:0.1e}K.dat', trans_data, header='r[m]\tM[Msun]\trho[g/cm^3]\tP[N/m^2]\tn_e[pm^-3]\tn_p[pm^-3]\tmuF_e[MeV]\tB', delimiter='\t')
         # np.savetxt(f'special_WDs/{Mstar}_Msun/r_transition_{temp:0.1e}K.dat', np.array([r_trans]))
