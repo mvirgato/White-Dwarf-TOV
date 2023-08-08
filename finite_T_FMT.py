@@ -700,11 +700,14 @@ def EoS_maker(elem, T, x1 = -3, x2 = 5, num_scale = 20, ode_iters = 1000, tol=1e
 # main code
 #=====================================================================
 if __name__ == "__main__":
-    temps = np.logspace(4, 7, 10)
+    temps = np.logspace(4, 8, 21)
     # temps = np.array([10**6.5, 10**7.5])
-    elems = ['C', 'O']
+    elems = ['C']
 
     for element in elems:
         for T in temps:
+            # file = 'EoS_Files/FMT_{:0.3e}K_{}_EoS.dat'.format(T, element)
+            # if not os.path.exists(file):
             EoS_maker(element, T, x1 = -3, x2 = 5, num_scale=100, ode_iters=50, tol=1e-4, calc_EoS=True)
-
+            # else:
+            #     continue
