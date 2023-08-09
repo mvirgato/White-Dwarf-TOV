@@ -886,9 +886,13 @@ if __name__ == "__main__":
         dr_set = dr(lP0)
 
         r_vals, m_vals, rho_vals, P_vals, ne_vals, np_vals, mufe_vals, B_vals, r_trans = system.TOV_mixed(10**lP0, dr_set)
+        res_central = system.TOV_central(10**lP0, dr_set, B_vals[0])
 
         trans_data = np.transpose([r_vals[:-1], np.array(m_vals)[:-1]/Msol, np.array(rho_vals)[:-1]*kgTOg/(mTOcm**3), P_vals[:-1], ne_vals[:-1], np_vals[:-1], mufe_vals[:-1], B_vals[:-1]])
-        np.savetxt(f'special_WDs/{Mstar}_Msun/FMT_OC_{temp:0.1e}K.dat', trans_data, header='r[m]\tM[Msun]\trho[g/cm^3]\tP[N/m^2]\tn_e[pm^-3]\tn_p[pm^-3]\tmuF_e[MeV]\tB', delimiter='\t')
+        trans_data_c = np.transpose(res_central)
+
+        np.savetxt(f'special_WDs/{Mstar}_Msun/FMT_OC_{temp:0.1e}K.dat', trans_data, header='r[m]\tM[Msun]\trho[g/cm^3]\tP[N/m^2]\tn_e[pm^-3]\tn_p[pm^-3]\tmuF_e[MeV]\tB', delimiter='\t', fmt='%0.8e')
+        np.savetxt(f'special_WDs/{Mstar}_Msun/FMT_OC_{temp:0.1e}K_central.dat', trans_data_c, header='r[m]\tM[Msun]\trho[g/cm^3]\tP[N/m^2]\tn_e[pm^-3]\tn_p[pm^-3]\tmuF_e[MeV]\tB', delimiter='\t', fmt='%0.8e')
         np.savetxt(f'special_WDs/{Mstar}_Msun/r_transition_{temp:0.1e}K.dat', np.array([r_trans]))
 
         # TOV_single = TOV('O', temp)
@@ -896,4 +900,3 @@ if __name__ == "__main__":
 
         # TOV_mixed = mixed_WD('O', 'C', temp)
         # TOV_mixed.Mass_Radius(lp0_1, lp0_2, num)
-
