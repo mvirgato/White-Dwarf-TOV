@@ -11,7 +11,7 @@ from scipy import interpolate as interp
 from scipy.stats import gmean
 import os
 
-plt.style.use('mvstyle')
+# plt.style.use('mvstyle')
 
 def file_filter(elememt, temp, files):
     T = '{:0.3e}'.format(temp)
@@ -344,6 +344,7 @@ class TOV:
             y0 =  [m_vals[-1], P_vals[-1], phi_vals[-1]]
             delta_m = np.fabs(m_vals[count] - m_vals[count-1])/(m_vals[count] + m_vals[count-1])
 
+
             # if  delta_m < 1e-11:
             #     print("Reached a stable mass of {:0.5} M_sol after {} steps".format(m_vals[-1]/Msol, count))
             #     break
@@ -357,6 +358,60 @@ class TOV:
         # B_vals = np.exp(2.*phi_vals_new)
         B_vals = B_prof_sover(r_vals/1000, m_vals/Msol, P_vals*10)
                     
+        return r_vals, m_vals, rho_vals, P_vals, ne_vals, np_vals, mufe_vals, B_vals
+    
+    def TOV_central(self, P0, dr, BR_c):
+
+        # M_star = self.P0_M_rel(self.elem, P0)
+
+        r_vals = np.logspace(np.log10(dr/1e7), np.log10(dr), 1000)
+
+        r0 = r_vals[0]
+        m0 = 4.*pi*self.eos.rho_P(P0)*r0**3/3.
+        # P = self.eosInner.P(xws0)
+        P = P0
+        phi_0 = 0.0
+
+        # r_vals    = np.array([r0])
+        m_vals    = np.array([m0])
+        P_vals    = np.array([P])
+        xws_now   = np.array(self.eos.xws_P(P))
+        rho_vals  = np.array([self.eos.rho_P(P)])
+        ne_vals   = np.array([self.eos.ne(xws_now)])
+        np_vals   = np.array([self.eos.np(xws_now)])
+        mufe_vals = np.array([self.eos.mufe(xws_now)])
+        phi_vals  = np.array([phi_0])
+
+        y0 = [m0, P, phi_0]
+        count = 0
+
+        # print("Solving central region of a {} M_sun WD, with P_0 = {} and T = {:0.3e} K:".format(M_star, P0, self.temp))
+
+        for ii, r_now in enumerate(r_vals[:-1]):
+            TOV_sol = integrate.solve_ivp(self.TOV_system, [r_now, r_vals[ii + 1]], y0, method = 'RK45')
+            # print('here')
+
+            m_vals   = np.append(m_vals, TOV_sol.y[0, -1])
+            P_vals   = np.append(P_vals, TOV_sol.y[1, -1])
+            phi_vals = np.append(phi_vals, TOV_sol.y[2, -1])
+
+            # print(m_vals, P_vals)
+
+            count = count+1
+
+            P = P_vals[-1]
+            xws_now = self.eos.xws_P(P)
+
+            rho_vals  = np.append(rho_vals, self.eos.rho_P(P))
+            ne_vals   = np.append(ne_vals,  self.eos.ne(xws_now))
+            np_vals   = np.append(np_vals, self.eos.np(xws_now))
+            mufe_vals = np.append(mufe_vals, self.eos.mufe(xws_now))
+
+            y0 =  [m_vals[-1], P_vals[-1], phi_vals[-1]]
+            # delta_m = np.fabs(m_vals[count] - m_vals[count-1])/(m_vals[count] + m_vals[count-1])
+
+        B_vals = B_prof_sover(np.array(r_vals)/1000.0, np.array(m_vals)/Msol, np.array(P_vals)*10.0, BR_c)
+        
         return r_vals, m_vals, rho_vals, P_vals, ne_vals, np_vals, mufe_vals, B_vals
 
 
@@ -390,6 +445,17 @@ class TOV:
         
         for lP in lP0_vals:
             R_vals, M_vals, rho_vals, P_vals, ne_vals, np_vals, mufe_vals, B_vals  = self.TOV_solver(10**lP, dr(lP))
+            R_cent, M_cent, rho_cent, P_cent, ne_cent, np_cent, mufe_cent, B_cent = self.TOV_central(10**lP, dr(lP), B_vals[0])
+
+            R_vals = np.append(R_cent, R_vals)
+            M_vals = np.append(M_cent, M_vals)
+            rho_vals = np.append(rho_cent, rho_vals)
+            P_vals = np.append(P_cent, P_vals)
+            ne_vals = np.append(ne_cent, ne_vals)
+            np_vals = np.append(np_cent, np_vals)
+            mufe_vals = np.append(mufe_cent, mufe_vals)
+            B_vals = np.append(B_cent, B_vals)
+
             print("\tResults: M = {}, R = {}\n".format(M_vals[-2]/Msol, R_vals[-2]))
             MR_vals.append([M_vals[-2], R_vals[-2]])
 
@@ -403,6 +469,9 @@ class TOV:
                 profile_data.to_csv('results/{}/{:0.3e}/profiles/{:0.3f}/profiles.dat'.format(self.elem, self.temp, mstar), index=False, sep='\t')
                 # Teff_vals = np.append(Teff_vals, T_eff(ne_vals[:-1], 2.0 * np_vals[:-1], self.eos.elem.Mnuc, self.temp, R_vals[:-1], M_vals[-2]))
                 surf_g_vals = np.append(surf_g_vals, surf_gravity(R_vals[-2], M_vals[-2]))
+                trans_data = np.transpose((R_cent[:-1], np.array(M_cent)[:-1]/Msol, np.array(rho_cent)[:-1]*kgTOg/(mTOcm**3), P_cent[:-1], ne_cent[:-1], np_cent[:-1], mufe_cent[:-1], B_cent[:-1]))
+                np.savetxt('results/{}/{:0.3e}/profiles/{:0.3f}/profile_central.dat'.format(self.elem, self.temp, mstar), trans_data, delimiter='\t', header='r[m]\tm[Msun]\trho[g/cm^3]\tP[Pa]\tne[pm^-3]\tnp[pm^-3]\tmuF_e[MeV]\tB')
+
 
 
         masses = np.array([m[0]/Msol for m in MR_vals])
@@ -820,35 +889,35 @@ def MR_plotter(plot_by = 'elem', elem = 'C', temp = 1e5):
 
 if __name__ == "__main__":
 
-        # for elem in ['C', 'O']:
-    # T0 = 0
-    # T1 = np.logspace(4, 8, 21)
-    # # T2 = np.logspace(7, 8, 10)
-    # # T_tot = np.append(T1, T2[1:-1])
-    # # T_tot = np.append(T0, T1)
-    # T_tot = T1
+    # for elem in ['C', 'O']:
+    T0 = 0
+    T1 = np.logspace(4, 8, 21)
+    # T2 = np.logspace(7, 8, 10)
+    # T_tot = np.append(T1, T2[1:-1])
+    # T_tot = np.append(T0, T1)
+    T_tot = [1e8]
 
-    # # T_tot = np.logspace(4, 8, 5)
+    # T_tot = np.logspace(4, 8, 5)
 
-    # lp0_1 = 20
-    # lp0_2 = 30
-    # num = 25
+    lp0_1 = 22
+    lp0_2 = 28
+    num = 50    
 
     # mass1 = 0.2
     # mass2 = 1.3
     # mass_inc = 0.05
     # mass_num = int( (mass2 - mass1)/mass_inc) + 1
 
-    # for T in T_tot:
-    # #     for elem in ['C']:
-    # # # # # elem = 'O'
-    # # # # # T = 10000
-    # # #         # print(T)
-    # #         TOV_single = TOV(elem, T)
-    # #         TOV_single.Mass_Radius(lp0_1, lp0_2, num)
+    for T in T_tot:
+        for elem in ['C']:
+    # # # elem = 'O'
+    # # # T = 10000
+    #         # print(T)
+            TOV_single = TOV(elem, T)
+            TOV_single.Mass_Radius(lp0_1, lp0_2, num)
 
-    #     TOV_mixed = mixed_WD('O', 'C', T)
-    #     TOV_mixed.Mass_Radius_Mscan(mass1, mass2, mass_num)
+        # TOV_mixed = mixed_WD('O', 'C', T)
+        # TOV_mixed.Mass_Radius_Mscan(mass1, mass2, mass_num)
         # TOV_mixed.Mass_Radius(lp0_1,lp0_2, num)
 
         # TOV_mixed = mixed_WD('C', 'He', T)
@@ -858,45 +927,45 @@ if __name__ == "__main__":
     # Single WD
     ########################################
 
-    # RS = 1241.3811457394036e3
-    Mstar = 0.63
-    # elem = 'O'
-    # temps = np.append(np.array([0.0]), np.logspace(4, 7, 10))
+    # # RS = 1241.3811457394036e3
+    # Mstar = 0.63
+    # # elem = 'O'
+    # # temps = np.append(np.array([0.0]), np.logspace(4, 7, 10))
 
-    temps = [1e6] #10**np.array([0])
-    lp0_1 = 21.5
-    lp0_2 = 30
-    num = 25
+    # temps = [1e6] #10**np.array([0])
+    # lp0_1 = 21.5
+    # lp0_2 = 30
+    # num = 25
 
     
     
-    for temp in temps:
+    # for temp in temps:
 
-        # if temp == 0.0 or np.log10(temp) in [0, 4, 5, 6, 7, 8]:
-        #     print(temp)
-        #     continue
+    #     # if temp == 0.0 or np.log10(temp) in [0, 4, 5, 6, 7, 8]:
+    #     #     print(temp)
+    #     #     continue
 
-        y1 = 1.7
-        y2 = 3.4
+    #     y1 = 1.7
+    #     y2 = 3.4
 
-        def dr(lP0): return 10**(-(y2-y1)*(lP0 - 21.5)/(30.0 - 21.5) + y2)
+    #     def dr(lP0): return 10**(-(y2-y1)*(lP0 - 21.5)/(30.0 - 21.5) + y2)
 
-        system = mixed_WD('O', 'C', temp)
-        lP0 = system.M_P0_rel(Mstar)
-        dr_set = dr(lP0)
+    #     system = mixed_WD('O', 'C', temp)
+    #     lP0 = system.M_P0_rel(Mstar)
+    #     dr_set = dr(lP0)
 
-        r_vals, m_vals, rho_vals, P_vals, ne_vals, np_vals, mufe_vals, B_vals, r_trans = system.TOV_mixed(10**lP0, dr_set)
-        res_central = system.TOV_central(10**lP0, dr_set, B_vals[0])
+    #     r_vals, m_vals, rho_vals, P_vals, ne_vals, np_vals, mufe_vals, B_vals, r_trans = system.TOV_mixed(10**lP0, dr_set)
+    #     res_central = system.TOV_central(10**lP0, dr_set, B_vals[0])
 
-        trans_data = np.transpose([r_vals[:-1], np.array(m_vals)[:-1]/Msol, np.array(rho_vals)[:-1]*kgTOg/(mTOcm**3), P_vals[:-1], ne_vals[:-1], np_vals[:-1], mufe_vals[:-1], B_vals[:-1]])
-        trans_data_c = np.transpose(res_central)
+    #     trans_data = np.transpose([r_vals[:-1], np.array(m_vals)[:-1]/Msol, np.array(rho_vals)[:-1]*kgTOg/(mTOcm**3), P_vals[:-1], ne_vals[:-1], np_vals[:-1], mufe_vals[:-1], B_vals[:-1]])
+    #     trans_data_c = np.transpose(res_central)
 
-        np.savetxt(f'special_WDs/{Mstar}_Msun/FMT_OC_{temp:0.1e}K.dat', trans_data, header='r[m]\tM[Msun]\trho[g/cm^3]\tP[N/m^2]\tn_e[pm^-3]\tn_p[pm^-3]\tmuF_e[MeV]\tB', delimiter='\t', fmt='%0.8e')
-        np.savetxt(f'special_WDs/{Mstar}_Msun/FMT_OC_{temp:0.1e}K_central.dat', trans_data_c, header='r[m]\tM[Msun]\trho[g/cm^3]\tP[N/m^2]\tn_e[pm^-3]\tn_p[pm^-3]\tmuF_e[MeV]\tB', delimiter='\t', fmt='%0.8e')
-        np.savetxt(f'special_WDs/{Mstar}_Msun/r_transition_{temp:0.1e}K.dat', np.array([r_trans]))
+    #     np.savetxt(f'special_WDs/{Mstar}_Msun/FMT_OC_{temp:0.1e}K.dat', trans_data, header='r[m]\tM[Msun]\trho[g/cm^3]\tP[N/m^2]\tn_e[pm^-3]\tn_p[pm^-3]\tmuF_e[MeV]\tB', delimiter='\t', fmt='%0.8e')
+    #     np.savetxt(f'special_WDs/{Mstar}_Msun/FMT_OC_{temp:0.1e}K_central.dat', trans_data_c, header='r[m]\tM[Msun]\trho[g/cm^3]\tP[N/m^2]\tn_e[pm^-3]\tn_p[pm^-3]\tmuF_e[MeV]\tB', delimiter='\t', fmt='%0.8e')
+    #     np.savetxt(f'special_WDs/{Mstar}_Msun/r_transition_{temp:0.1e}K.dat', np.array([r_trans]))
 
-        # TOV_single = TOV('O', temp)
-        # TOV_single.Mass_Radius(lp0_1, lp0_2, num)
+    #     # TOV_single = TOV('O', temp)
+    #     # TOV_single.Mass_Radius(lp0_1, lp0_2, num)
 
-        # TOV_mixed = mixed_WD('O', 'C', temp)
-        # TOV_mixed.Mass_Radius(lp0_1, lp0_2, num)
+    #     # TOV_mixed = mixed_WD('O', 'C', temp)
+    #     # TOV_mixed.Mass_Radius(lp0_1, lp0_2, num)
