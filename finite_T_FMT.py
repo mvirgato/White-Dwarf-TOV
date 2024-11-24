@@ -45,6 +45,7 @@ def clean_cell_data(dir):
 class elem_data:
     '''
     Class to access element data
+
     Znum = Atomic number, Z
     Mnuc = Attomic mass, A
     mufrac = N_p/Z
@@ -467,7 +468,7 @@ def ode_solver(xws, s0, elem, params = [], tol = 1e-4, max_iters = 1000):
     The function stores the x_WS and chi profiles for each element and temperature so that the system only needs to be solved once, then the EoS can be recalulated from these files.
     The files are archived as a .tgz
 
-    I have set the amount s0 (the unkown initial condition) is increiment to decrease by a factor of 2 after a certain number of iterations
+    I have set the amount s0 (the unkown initial condition) to decrease by a factor of 2 after a certain number of iterations
     This is because eventually the steps are too large and it will oscillate between the same 2 values. This can be changed to be finer tuned.
 
     xws = cell raduis / lambda_pi
